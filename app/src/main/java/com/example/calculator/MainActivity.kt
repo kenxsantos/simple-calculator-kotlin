@@ -47,6 +47,7 @@ import net.objecthunter.exp4j.Expression
 import net.objecthunter.exp4j.ExpressionBuilder
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import kotlin.math.exp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +55,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CalculatorTheme {
-                Column(modifier = Modifier.fillMaxSize().padding(5.dp)) {
+                Column(modifier = Modifier.fillMaxSize()) {
                     Calculator()
                 }
             }
@@ -64,15 +65,30 @@ class MainActivity : ComponentActivity() {
 
 fun calculate(expression: String ): String {
     try {
+        val tokens = mutableListOf<String>()
+        var number = ""
 
-        val regex = Regex("(-?\\d+(\\.\\d+)?)|([+\\-*/])")
 
-        val tokens = regex.findAll(expression).map {it.value}.toList()
+        for (i in expression.indices){
+            val char = expression[i]
 
-        if (tokens.isEmpty() || tokens.size < 3 ) return "Error"
+            if (char.isDigit() || char == '.'){
+                number += char
+            }else if (char == '-' && (i == 0 || expression[i - 1] in "+-*/")){
+                number += char
+            }else{
+                if (number.isNotEmpty()){
+                    tokens.add(number)
+                    number = ""
+                }
+                tokens.add(char.toString())
+            }
+        }
+
+        if (number.isNotEmpty())tokens.add(number)
+        if (tokens.size < 3 ) return "Error"
 
         var result = tokens[0].toDoubleOrNull() ?: return "Error"
-
         var i = 1
 
 
@@ -84,7 +100,7 @@ fun calculate(expression: String ): String {
                 "+" -> result + nextNum
                 "-" -> result - nextNum
                 "*" -> result * nextNum
-                "/" -> if(nextNum != 0.0) result / nextNum else return "Error"
+                "/" -> if(nextNum != 0.0) result / nextNum else return "Undefined: Division by Zero"
                 else -> return "Error"
             }
             i += 2
@@ -103,6 +119,7 @@ fun Calculator () {
 
     var input by remember { mutableStateOf("") }
     var result by remember { mutableStateOf("") }
+    val operators = listOf("+", "-", "*", "/")
 
 
     val buttonKeys = listOf(
@@ -153,7 +170,12 @@ fun Calculator () {
                             "C" -> {
                                 input = ""
                                 result = ""
-                            }else -> input += text
+                            }else -> {
+                                if (operators.contains(text) && (input.isEmpty() || operators.contains(input.last().toString()))){
+                                    return@CalculatorButton
+                                }
+                                input += text
+                            }
                         }
                     }
                 }

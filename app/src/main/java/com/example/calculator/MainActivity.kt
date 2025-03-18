@@ -65,37 +65,31 @@ class MainActivity : ComponentActivity() {
 fun calculate(expression: String ): String {
     try {
 
-        var num1 = ""
-        val operators = listOf("+", "-", "*", "/")
-        var num2 = ""
-        var operator = ""
+        val regex = Regex("(-?\\d+(\\.\\d+)?)|([+\\-*/])")
 
-        for (char in expression) {
-            when {
-                char.isDigit() || char == '.' -> {
-                    if (operator.isEmpty()) num1 += char else num2 += char
-                }
+        val tokens = regex.findAll(expression).map {it.value}.toList()
 
-                char.toString() in operators -> {
-                    if (num1.isNotEmpty() && num2.isNotEmpty()) {
-                        operator = char.toString()
-                    } else {
-                        return "Error"
-                    }
-                }
+        if (tokens.isEmpty() || tokens.size < 3 ) return "Error"
+
+        var result = tokens[0].toDoubleOrNull() ?: return "Error"
+
+        var i = 1
+
+
+        while ( i < tokens.size){
+            val operator = tokens[i]
+            val nextNum = tokens.getOrNull(i + 1)?.toDoubleOrNull() ?: return "Error"
+
+            result = when (operator){
+                "+" -> result + nextNum
+                "-" -> result - nextNum
+                "*" -> result * nextNum
+                "/" -> if(nextNum != 0.0) result / nextNum else return "Error"
+                else -> return "Error"
             }
+            i += 2
         }
-
-        var first = num1.toDoubleOrNull() ?: return "Error"
-        var second = num2. toDoubleOrNull() ?: return  "Error"
-
-        return when (operator) {
-            "+" -> (first + second).toString()
-            "-" -> (first - second).toString()
-            "*" -> (first * second).toString()
-            "/" -> if(second != 0.0) (first / second).toString() else "Error"
-            else -> "Error"
-        }
+       return result.toString()
     } catch (error: Exception) {
         return "Error: $error"
     }

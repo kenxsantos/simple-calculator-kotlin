@@ -52,96 +52,61 @@ class MainActivity : ComponentActivity() {
 
 fun calculate(expression: String ): String {
     try {
-        val tokens = tokenize(expression)
-        if (tokens.isEmpty()) return "Error"
+        val tokens = mutableListOf<String>()
+        var number = ""
 
-        val postfix = infixToPostfix(tokens) ?: return "Error"
-        val result = evaluatePostfix(postfix) ?: return "Error"
 
-       return result.toString()
-    } catch (error: Exception) {
-        return "Error: $error"
-    }
-}
+        for (i in expression.indices){
+            val char = expression[i]
 
-fun tokenize(expression: String): List<String> {
-    val tokens = mutableListOf<String>()
-    var number = ""
-
-    for (i in expression.indices){
-        val char = expression[i]
-
-        if (char.isDigit() || char == '.'){
-            number += char
-        }else {
+            if (char.isDigit() || char == '.'){
+                number += char
+            }else if (char == '-' && (i == 0 || expression[i - 1] in "+-*/")){
+                number += char
+            }else{
                 if (number.isNotEmpty()){
                     tokens.add(number)
                     number = ""
                 }
                 tokens.add(char.toString())
+            }
         }
+
+        if (number.isNotEmpty())tokens.add(number)
+        if (tokens.size < 3 ) return ""
+
+        var result = tokens[0].toDoubleOrNull() ?: return "Error"
+        var i = 1
+
+
+        while ( i < tokens.size){
+            val operator = tokens[i]
+            val nextNum = tokens.getOrNull(i + 1)?.toDoubleOrNull() ?: return "Error"
+
+            result = when (operator){
+                "+" -> result + nextNum
+                "-" -> result - nextNum
+                "*" -> result * nextNum
+                "/" -> if(nextNum != 0.0) result / nextNum else return "Undefined: Division by Zero"
+                else -> return "Error"
+            }
+            i += 2
+        }
+        return result.toString()
+    } catch (error: Exception) {
+        return "Error: $error"
     }
-    if (number.isNotEmpty())tokens.add(number)
-    return tokens
 }
 
-fun infixToPostfix(tokens: List<String>): List<String>? {
-    val precedence = mapOf("+" to 1, "-" to 1, "*" to 2, "/" to 2)
-    val output = mutableListOf<String>()
-    val operators = Stack<String>()
+fun useRegex(input: String): String {
+    val regex = Regex(pattern = "\\.0")
 
-    for (token in tokens) {
-        when {
-            token.toDoubleOrNull() != null -> output.add(token)
-            token == "(" -> operators.push(token)
-            token == ")" -> {
-                while (operators.isNotEmpty() && operators.peek() != "(") {
-                    output.add(operators.pop())
-                }
-                if (operators.isEmpty() || operators.pop() != "(") return null
-            }
+    var final = input
 
-            token in precedence -> {
-                while (operators.isNotEmpty() && precedence.getOrDefault(
-                        operators.peek(), 0) >= precedence[token]!!
-                ) {
-                    output.add(operators.pop())
-                }
-                operators.push(token)
-            }
-
-            else -> return null
-        }
+    if (regex.containsMatchIn(input)){
+        final = input.replace(regex, "")
     }
-    while (operators.isNotEmpty()) {
-        if (operators.peek() == "(") return null
-        output.add(operators.pop())
-    }
-    return output
-}
-
-fun evaluatePostfix(postfix: List<String>): Double?{
-    val stack = Stack<Double>()
-
-    for (token in postfix){
-        if (token.toDoubleOrNull() != null){
-            stack.push(token.toDouble())
-        }else{
-            if (stack.size < 2) return null
-            val b = stack.pop()
-            val a = stack.pop()
-
-            val result = when (token){
-                "+" -> a + b
-                "-" -> a - b
-                "*" -> a * b
-                "/" -> if(b != 0.0) a / b else  return null
-                else -> return null
-            }
-            stack.push(result)
-        }
-    }
-    return if (stack.size == 1)stack.pop() else null
+    return final
 }
 
 @Composable
@@ -152,13 +117,13 @@ fun Calculator () {
 
     var input by remember { mutableStateOf("") }
     var result by remember { mutableStateOf("") }
-    val operators = listOf("+", "-", "*", "/", "(", ")")
+    val operators = listOf("+", "-", "*", "/", ".")
 
-    val finalResult = result.replace(".0", "")
+    val finalResult = useRegex(result)
 
 
     val buttonKeys = listOf(
-        listOf("(", ")", "AC", "C"),
+        listOf("AC", "C", "", ""),
         listOf("7", "8", "9", "/"),
         listOf("4", "5", "6", "*"),
         listOf("1", "2", "3", "-"),
